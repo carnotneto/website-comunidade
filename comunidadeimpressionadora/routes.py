@@ -1,10 +1,11 @@
 from flask import render_template, redirect, url_for, flash, request
 from comunidadeimpressionadora import app, database, bcrypt
-from comunidadeimpressionadora.forms import FormLogin, FormCriarConta
+from comunidadeimpressionadora.forms import FormLogin, FormCriarConta, FormEditarPerfil
 from comunidadeimpressionadora.models import Usuario
-from flask_login import login_user, logout_user, current_user
-
-lista_usuarios = ['João', 'Carnot', 'Maurício']
+from flask_login import login_user, logout_user, current_user, login_required
+import secrets
+import os
+from PIL import Image
 
 
 @app.route("/")
@@ -18,7 +19,9 @@ def contato():
 
 
 @app.route("/usuarios")
+@login_required
 def usuarios():
+    lista_usuarios = Usuario.query.all()
     return render_template('usuarios.html', lista_usuarios=lista_usuarios)
 
 
@@ -32,7 +35,11 @@ def login():
         if usuario and bcrypt.check_password_hash(usuario.senha, form_login.senha.data):
             login_user(usuario, remember=form_login.lembrar_dados.data)
             flash(f'Logado como {form_login.email.data}', 'alert-success')
-            return redirect(url_for('home'))
+            par_next = request.args.get('next')
+            if par_next:
+                return redirect(par_next)
+            else:
+                return redirect(url_for('home'))
         else:
             flash(f'Não foi possivel logar como {form_login.email.data}. Verifique email ou senha e tente novamente.',
                   'alert-danger')
@@ -49,6 +56,7 @@ def login():
 
 
 @app.route('/logout')
+@login_required
 def logout():
     logout_user()
     flash('Logout feito com sucesso!', 'alert-success')
@@ -56,10 +64,56 @@ def logout():
 
 
 @app.route('/perfil')
+@login_required
 def perfil():
-    return render_template('perfil.html')
+    foto_perfil = url_for('static', filename='fotos_perfil/{}'.format(current_user.foto_perfil))
+    return render_template('perfil.html', foto_perfil=foto_perfil)
 
 
 @app.route('/post/criar')
+@login_required
 def post():
     return render_template('criarpost.html')
+
+
+def salvar_imagem(imagem):
+    codigo = secrets.token_hex(8)
+    nome, extensao = os.path.splitext(imagem.filename)
+    nome_completo = nome + codigo + extensao
+    caminho = os.path.join(app.root_path, 'static/fotos_perfil', nome_completo)
+    tamanho = (400, 400)
+    imagem_reduzida = Image.open(imagem)
+    imagem_reduzida.thumbnail(tamanho)
+    imagem_reduzida.save(caminho)
+    return nome_completo
+
+
+def atualizar_cursos(form):
+    lista_cursos = []
+    for campo in form:
+        if 'curso_' in campo.name:
+            if campo.data:
+                lista_cursos.append(campo.label.text)
+    return ';'.join(lista_cursos)
+
+
+@app.route('/perfil/editar', methods=['GET', 'POST'])
+@login_required
+def editar_perfil():
+    form = FormEditarPerfil()
+    if form.validate_on_submit():
+        current_user.email = form.email.data
+        current_user.username = form.username.data
+        if form.foto_perfil.data:
+            nome_imagem = salvar_imagem(form.foto_perfil.data)
+            current_user.foto_perfil = nome_imagem
+        current_user.cursos = atualizar_cursos(form)
+        database.session.commit()
+        flash('Perfil atualizado com sucesso!', 'alert-success')
+        return redirect(url_for('perfil'))
+    elif request.method == 'GET':
+        form.email.data = current_user.email
+        form.username.data = current_user.username
+        
+    foto_perfil = url_for('static', filename='fotos_perfil/{}'.format(current_user.foto_perfil))
+    return render_template('editarperfil.html', foto_perfil=foto_perfil, form=form)
