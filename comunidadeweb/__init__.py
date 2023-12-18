@@ -15,7 +15,7 @@ login_manager.login_view = 'login'
 login_manager.login_message = 'Faça login para acessar esta página.'
 login_manager.login_message_category = 'alert-info'
 
-from comunidadeimpressionadora import routes
+from comunidadeweb import routes
 
 with app.app_context():
     database.create_all()

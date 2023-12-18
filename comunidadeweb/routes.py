@@ -1,7 +1,7 @@
 from flask import render_template, redirect, url_for, flash, request, abort
-from comunidadeimpressionadora import app, database, bcrypt
-from comunidadeimpressionadora.forms import FormLogin, FormCriarConta, FormEditarPerfil, FormCriarPost
-from comunidadeimpressionadora.models import Usuario, Post
+from comunidadeweb import app, database, bcrypt
+from comunidadeweb.forms import FormLogin, FormCriarConta, FormEditarPerfil, FormCriarPost
+from comunidadeweb.models import Usuario, Post
 from flask_login import login_user, logout_user, current_user, login_required
 import secrets
 import os

@@ -1,4 +1,4 @@
-from comunidadeimpressionadora import app
+from comunidadeweb import app
 
 if __name__ == '__main__':
     app.run(debug=True)
